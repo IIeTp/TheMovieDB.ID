@@ -4,16 +4,6 @@
 
 # apiary.io debugging URL
 # BASE_URL = 'http://private-ad99a-themoviedb.apiary.io/3'
-import re
-from updater import Updater
-from utils import *
-
-FileBotMod = filebot_is(Prefs['xattr_id'])
-if FileBotMod != False:
-  from filebot import *
-  FileBot = True
-else:
-  FileBot = False
 
 TMDB_BASE_URL = 'http://127.0.0.1:32400/services/tmdb?uri=%s'
 TMDB_CONFIG = '/configuration'
@@ -54,11 +44,8 @@ LANGUAGES = [
 
 ####################################################################################################
 def Start():
-  if Prefs['auto_update'] != 'none':
-    Thread.CreateTimer(int(Prefs['update_interval'] or 1)*60, Updater.auto_update_thread, core=Core, pref=Prefs)
 
-def ValidatePrefs():
-  Log('ValidatePrefs function call')
+  pass
 
 ####################################################################################################
 @expose
@@ -221,6 +208,7 @@ def DictToMovieMetadataObj(metadata_dict, metadata):
       if 'photo' in producer:
         meta_producer.photo = producer['photo']
 
+
 ####################################################################################################
 def PerformTMDbMovieSearch(results, media, lang, manual, get_imdb_id=False):
 
@@ -228,48 +216,8 @@ def PerformTMDbMovieSearch(results, media, lang, manual, get_imdb_id=False):
   # This requires the other agent to use the IMDb id as key.
   if media.primary_metadata is not None and RE_IMDB_ID.search(media.primary_metadata.id):
     AppendSearchResult(results=results, id=media.primary_metadata.id, score=100)
-  else:
-  # Begin MOD_ID
-  # Looking for tmdb or imdb ID in the movie name, file name, FileBot XATTR metadata, and use it.
-    if media.filename:
-      file = media.items[0].parts[0].file
-      attr = xattr_metadata(file) if FileBot == True else None
-      mid = movie_id(attr) if attr is not None else None
-      if mid is None:
-        mid = ''
-      id_movie = find_id(r'(?<=tt)\d{7,}', mid + ' ' + media.name + ' ' + file)
-      if id_movie is not None:
-        Log('Searching movie \"'  + media.name + '\" By IMDB ID \'tt' + id_movie + '\'')
-        tmdb_dict = GetTMDBJSON(url=TMDB_MOVIE % ('tt' + id_movie, lang))
-        if isinstance(tmdb_dict, dict) and 'id' in tmdb_dict:
-          id = 'tt' + id_movie
-          AppendSearchResult(results=results,
-                             id=id,
-                             name=tmdb_dict['title'],
-                             year=int(tmdb_dict['release_date'].split('-')[0]),
-                             score=100,
-                             lang=lang)
-      else:
-          id_movie = find_id(r'(?<=tmdb)\d+|(?<=tmdb-)\d+|(?<=tmdb )\d+|(?<=tmdb_)\d+', mid + ' ' + media.name + ' ' + file)
-          if id_movie is not None:
-            Log('Searching movie \"'  + media.name + '\" By TMDB ID \'' + id_movie + '\'')
-            tmdb_dict = GetTMDBJSON(url=TMDB_MOVIE % (id_movie, lang))
-            if isinstance(tmdb_dict, dict) and 'id' in tmdb_dict:
-              if get_imdb_id:
-                if 'imdb_id' in tmdb_dict and RE_IMDB_ID.search(tmdb_dict['imdb_id']):
-                  id = str(tmdb_dict['imdb_id'])
-                else:
-                  id = GetImdbId(tmdb_dict['id'], lang) or tmdb_dict['id']
-              else:
-                id = tmdb_dict['id']
-              AppendSearchResult(results=results,
-                                 id=id,
-                                 name=tmdb_dict['title'],
-                                 year=int(tmdb_dict['release_date'].split('-')[0]),
-                                 score=100,
-                                 lang=lang)
-    # End MOD_ID
 
+  else:
     # If this a manual search (Fix Incorrect Match) and we get an IMDb id as input.
     if manual and RE_IMDB_ID.search(media.name):
       tmdb_dict = GetTMDBJSON(url=TMDB_MOVIE % (media.name, lang))
@@ -601,10 +549,9 @@ def PerformTMDbMovieUpdate(metadata_id, lang, existing_metadata):
   return metadata
 
 ####################################################################################################
-class id_movieAgent(Agent.Movies):
+class TMDbAgent(Agent.Movies):
 
-  name = 'The Movie Database.ID'
-  agent_type = 'movie'
+  name = 'The Movie Database'
   languages = LANGUAGES
   primary_provider = True
   accepts_from = ['com.plexapp.agents.localmedia']
@@ -624,54 +571,29 @@ class id_movieAgent(Agent.Movies):
     DictToMovieMetadataObj(metadata_dict, metadata)
 
 ####################################################################################################
-class id_movieAgent(Agent.TV_Shows):
+class TMDbAgent(Agent.TV_Shows):
 
-  name = 'The Movie Database.ID'
-  agent_type = 'tv'
+  name = 'The Movie Database'
   languages = LANGUAGES
   primary_provider = True
-  accepts_from = ['com.plexapp.agents.localmedia']
+  accepts_from = ['com.plexapp.agents.localmedia', 'com.plexapp.agents.thetvdb']
+  contributes_to = ['com.plexapp.agents.thetvdb']
 
   def search(self, results, media, lang, manual):
 
-    for s in media.seasons:
-      for e in media.seasons[s].episodes:
-       file = media.seasons[s].episodes[e].items[0].parts[0].file ; break
-      break
-    if file:
-      attr = xattr_metadata(file) if FileBot == True else None
-      sid = series_id(attr) if attr is not None else None
-      search_string = xstr(sid) + ' ' + xstr(media.show) + ' ' + file
-      id_series = find_id(r'(?<=tmdb)\d+|(?<=tmdb-)\d+|(?<=tmdb )\d+|(?<=tmdb_)\d+|(?<=TheMovieDB::TV_)\d+', search_string)
-      if id_series is not None:
-        Log('Searching Series \"'  + xstr(media.show) + '\" By TMDB ID \'' + id_series + '\'')
-        tmdb_dict = GetTMDBJSON(url=TMDB_TV % (id_series, lang))
-        if isinstance(tmdb_dict, dict):
-            results.Append(MetadataSearchResult(
-              id = str(tmdb_dict['id']),
-              name = tmdb_dict['name'],
-              score = 250,
-              lang = lang
-            ))
+    # If TMDB is used as a secondary agent for TVDB, find the TMDB id
+    if media.primary_agent == 'com.plexapp.agents.thetvdb':
+      tmdb_dict = GetTMDBJSON(url=TMDB_TV_TVDB % (media.primary_metadata.id))
 
-      id_series = find_id(r'(?<=tvdb)(\d+)|(?<=tvdb-)(\d+)|(?<=tvdb )(\d+)|(?<=tvdb_)(\d+)', search_string)
-      if id_series is not None:
-        Log('Searching Series \"'  + xstr(media.show) + '\" By TVDB ID \'' + id_series + '\'')
-        tmdb_dict = GetTMDBJSON(url=TMDB_TV_TVDB % id_series)
-        if isinstance(tmdb_dict, dict):
-          id_series = find_id(r'(?<=\'id\': )\d+', xstr(tmdb_dict['tv_results']))
-          if id_series is not None:
-            Log('Founded Series \"'  + xstr(media.show) + '\" TMDB ID \'' + id_series + '\'')
-            tmdb_dict = GetTMDBJSON(url=TMDB_TV % (id_series, lang))
-            if isinstance(tmdb_dict, dict):
-                results.Append(MetadataSearchResult(
-                  id = str(tmdb_dict['id']),
-                  name = tmdb_dict['name'],
-                  score = 250,
-                  lang = lang
-                ))
-          else:
-            Log('NOT founded Series \"'  + xstr(media.show) + '\" in TMDB by ID ')
+      if isinstance(tmdb_dict, dict) and 'tv_results' in tmdb_dict and len(tmdb_dict['tv_results']) > 0:
+        tmdb_id = tmdb_dict['tv_results'][0]['id']
+
+        results.Append(MetadataSearchResult(
+          id = str(tmdb_id),
+          score = 100
+        ))
+
+      return
 
     if media.year and int(media.year) > 1900:
       year = media.year
@@ -735,7 +657,7 @@ class id_movieAgent(Agent.TV_Shows):
           ))
 
   def update(self, metadata, media, lang):
-    Log('Begin Series MetaUpdate')
+
     config_dict = GetTMDBJSON(url=TMDB_CONFIG, cache_time=CACHE_1WEEK * 2)
     if config_dict is None or 'images' not in config_dict or 'base_url' not in config_dict['images']:
       config_dict = dict(images=dict(base_url=''))

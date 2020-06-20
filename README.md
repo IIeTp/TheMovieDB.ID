@@ -1,23 +1,4 @@
-# TheMovieDB.ID
-This agent is based on the original **TheMovieDB** plugin. For the improvement of the code, thanks go to [Reyter](https://github.com/ReyterAK).
+License
+-------
 
-The main differences from the original version:
-- Added the ability to use the ID from movie or TV show, instead of the name or in addition to it.
-- Added the ability to use ID from [FileBot Xattr Metadata](https://github.com/filebot/plex-agents), for support, installation of this plugin is required.
-
-## Examples
-[Avatar](https://www.themoviedb.org/movie/19995-avatar) tmdb-ID = 19995, [Avatar](https://www.imdb.com/title/tt0499549/) imdb-id = tt0499549
-It does not matter what the name of the file is, if tmdb-ID is specified in the filepath, then the information will be bound to the ID.
-Pattern: tmdb-00000 or tt00000
-
-* `\tmdb-19995\1.mkv` = `Avatar (2009)`                                   
-* `\we\like\what\tmdb-19995\we\do\Total Recall (1990).m2ts` = `Avatar (2009)`
-* `\Scarface (1983) tmdb-19995.mp4` = `Avatar (2009)`                     
-* `\Avengers. Endgame (2019) tt0499549.avi` = `Avatar (2009)`       
-Note: standard plex scanners ignore the BDMV folder, so if you store movies in the BDAV/BDMV folder structure, you will have to use a third-party scanner, for example [FileBot Xattr Metadata](https://github.com/filebot/plex-agents) *(this scanner can only work with xattr metadata)*.
-
-## Install
-1. If you want to install the agent manually or if you are interested in the source code, you can download the latest copy of the agent from Github: [releases](https://github.com/IIeTp/TheMovieDB.ID.bundle/releases)
-2. Move TheMovieDB.ID.bundle to the default plugins folder. [FAQ](https://support.plex.tv/articles/202915258-where-is-the-plex-media-server-data-directory-located/)            
-   `%LOCALAPPDATA%\Plex Media Server\Plug-ins` for Windows Vista/7/8/10
-   
+If the software submitted to this repository accesses or calls any software provided by Plex (“Interfacing Software”), then as a condition for receiving services from Plex in response to such accesses or calls, you agree to grant and do hereby grant to Plex and its affiliates worldwide a worldwide, nonexclusive, and royalty-free right and license to use (including testing, hosting and linking to), copy, publicly perform, publicly display, reproduce in copies for distribution, and distribute the copies of any Interfacing Software made by you or with your assistance; provided, however, that you may notify Plex at legal@plex.tv if you do not wish for Plex to use, distribute, copy, publicly perform, publicly display, reproduce in copies for distribution, or distribute copies of an Interfacing Software that was created by you, and Plex will reasonable efforts to comply with such a request within a reasonable time.
